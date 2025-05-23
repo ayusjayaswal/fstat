@@ -198,19 +198,24 @@ do_fstat(int argc, char **argv)
 	if (p == NULL)
 		xo_errx(1, "procstat_getprocs() failed: %s", xo_strerror(errno));
 
+  xo_open_list("fstat-entry");
 	/*
 	 * Print header.
 	 */
+xo_emit_h("{T:USER/%-8s}{T:/%-10s}{T:PID/%5s}{T:FD/%4s}", "USER", "CMD", "PID",
+        "FD");
 	if (nflg)
-		printf("%s",
-"USER     CMD          PID   FD  DEV    INUM       MODE SZ|DV R/W");
+		xo_emit_h("{T:DEVICE/%-6s}{T:INODE/%10s}{T:MODE/%12s}{T:SIZE_OR_DEV/%-6s}
+            {T:ACCESS/%3s}",
+		    "DEV", "INUM", "MODE", "SZ|DV", "R/W");
 	else
-		printf("%s",
-"USER     CMD          PID   FD MOUNT      INUM MODE         SZ|DV R/W");
+		xo_emit_h("{T:MOUNT/%-10s}{T:INODE/%10s}{T:MODE/%12s}{T:SIZE_OR_DEV/%-6s}
+            {T:ACCESS/%3s}",
+		    "MOUNT", "INUM", "MODE", "SZ|DV", "R/W");
+
 	if (checkfile && fsflg == 0)
-		printf(" NAME\n");
-	else
-		putchar('\n');
+		xo_emit_h("{T:NAME/ %s}", " NAME");
+	xo_emit_h("\n");
 
 	/*
 	 * Go through the process list.
@@ -220,8 +225,10 @@ do_fstat(int argc, char **argv)
 			continue;
 		dofiles(procstat, &p[i]);
 	}
+  xo_close_list("fstat-entry");
 	procstat_freeprocs(procstat, p);
 	procstat_close(procstat);
+  xo_finish();
 	return (0);
 }
 
@@ -277,62 +284,95 @@ print_file_info(struct procstat *procstat, struct filestat *fst,
 		if (fsmatch == 0 || (filename == NULL && fsflg == 0))
 			return;
 	}
-
+  xo_open_instance("file-details");
 	/*
 	 * Print entry prefix.
 	 */
-	printf("%-8.8s %-10s %5d", uname, cmd, pid);
-	if (fst->fs_uflags & PS_FST_UFLAG_TEXT)
-		printf(" text");
+  xo_emit("{k:user/%-8.8s} {k:command/%-10s} {k:pid/%5d}", uname, cmd, pid);
+//	if (fst->fs_uflags & PS_FST_UFLAG_TEXT)
+//		printf(" text");
+//	else if (fst->fs_uflags & PS_FST_UFLAG_CDIR)
+//		printf("   wd");
+//	else if (fst->fs_uflags & PS_FST_UFLAG_RDIR)
+//		printf(" root");
+//	else if (fst->fs_uflags & PS_FST_UFLAG_TRACE)
+//		printf("   tr");
+//	else if (fst->fs_uflags & PS_FST_UFLAG_MMAP)
+//		printf(" mmap");
+//	else if (fst->fs_uflags & PS_FST_UFLAG_JAIL)
+//		printf(" jail");
+//	else if (fst->fs_uflags & PS_FST_UFLAG_CTTY)
+//		printf(" ctty");
+//	else
+//		printf(" %4d", fst->fs_fd);
+  if (fst->fs_uflags & PS_FST_UFLAG_TEXT)
+		xo_emit(" {:fd_description/text%4s}", "");
 	else if (fst->fs_uflags & PS_FST_UFLAG_CDIR)
-		printf("   wd");
+		xo_emit(" {:fd_description/%6s}", "wd");
 	else if (fst->fs_uflags & PS_FST_UFLAG_RDIR)
-		printf(" root");
+		xo_emit(" {:fd_description/%6s}", "root");
 	else if (fst->fs_uflags & PS_FST_UFLAG_TRACE)
-		printf("   tr");
+		xo_emit(" {:fd_description/%6s}", "tr");
 	else if (fst->fs_uflags & PS_FST_UFLAG_MMAP)
-		printf(" mmap");
+		xo_emit(" {:fd_description/%6s}", "mmap");
 	else if (fst->fs_uflags & PS_FST_UFLAG_JAIL)
-		printf(" jail");
+		xo_emit(" {:fd_description/%6s}", "jail");
 	else if (fst->fs_uflags & PS_FST_UFLAG_CTTY)
-		printf(" ctty");
+		xo_emit(" {:fd_description/%6s}", "ctty");
 	else
-		printf(" %4d", fst->fs_fd);
+		xo_emit(" {:fd_number/%4d}", fst->fs_fd);
 
 	/*
 	 * Print type-specific data.
 	 */
-	switch (fst->fs_type) {
+switch (fst->fs_type) {
 	case PS_FST_TYPE_FIFO:
+		xo_emit("{e:file_type/fifo}");
+		print_vnode_info(procstat, fst);
+		break;
 	case PS_FST_TYPE_VNODE:
+		xo_emit("{e:file_type/vnode}");
 		print_vnode_info(procstat, fst);
 		break;
 	case PS_FST_TYPE_SOCKET:
+		xo_emit("{e:file_type/socket}");
 		print_socket_info(procstat, fst);
 		break;
 	case PS_FST_TYPE_PIPE:
+		xo_emit("{e:file_type/pipe}");
 		print_pipe_info(procstat, fst);
 		break;
 	case PS_FST_TYPE_PTS:
+		xo_emit("{e:file_type/pts}");
 		print_pts_info(procstat, fst);
 		break;
 	case PS_FST_TYPE_SHM:
+		xo_emit("{e:file_type/shm}");
 		print_shm_info(procstat, fst);
 		break;
 	case PS_FST_TYPE_SEM:
+		xo_emit("{e:file_type/sem}");
 		print_sem_info(procstat, fst);
 		break;
 	case PS_FST_TYPE_DEV:
+        xo_emit("{e:file_type/dev}");
+		xo_emit(" {:device_details/n\\/a%*s}", 28, "");
+		print_access_flags(fst->fs_fflags);
 		break;
 	default:	
+		xo_emit("{e:file_type/unknown}");
 		if (vflg)
-			fprintf(stderr,
-			    "unknown file type %d for file %d of pid %d\n",
+			xo_warnx("unknown file type %d for file %d of pid %d",
 			    fst->fs_type, fst->fs_fd, pid);
+		xo_emit(" {:unknown_type_details/n\\/a%*s}", 28, "");
+		print_access_flags(fst->fs_fflags);
 	}
+
 	if (filename && !fsflg)
-		printf("  %s", filename);
-	putchar('\n');
+    xo_emit(" {:name_from_argument/ %s}", filename_from_arg);
+
+	xo_close_instance("file-details");
+	xo_emit("\n");
 }
 
 static char *
