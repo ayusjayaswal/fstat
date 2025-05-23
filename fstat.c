@@ -107,10 +107,14 @@ do_fstat(int argc, char **argv)
 	struct procstat *procstat;
 	int arg, ch, what;
 	int cnt, i;
-
 	arg = 0;
 	what = KERN_PROC_PROC;
 	nlistf = memf = NULL;
+  /* parse --libxo arguments first */
+  argc = xo_parse_args(argc, argv);
+  if (argc < 0)
+    xo_errx(1, "libxo argument parsing failed");
+
 	while ((ch = getopt(argc, argv, "fmnp:su:vN:M:")) != -1)
 		switch((char)ch) {
 		case 'f':
@@ -132,7 +136,7 @@ do_fstat(int argc, char **argv)
 			if (pflg++)
 				usage();
 			if (!isdigit(*optarg)) {
-				warnx("-p requires a process id");
+				xo_warnx("-p requires a process id");
 				usage();
 			}
 			what = KERN_PROC_PID;
@@ -145,7 +149,7 @@ do_fstat(int argc, char **argv)
 			if (uflg++)
 				usage();
 			if (!(passwd = getpwnam(optarg)))
-				errx(1, "%s: unknown uid", optarg);
+				xo_errx(1, "%s: unknown uid", optarg);
 			what = KERN_PROC_UID;
 			arg = passwd->pw_uid;
 			break;
@@ -173,15 +177,26 @@ do_fstat(int argc, char **argv)
 		checkfile = 1;
 	}
 
-	if (memf != NULL)
+//	if (memf != NULL)
+//		procstat = procstat_open_kvm(nlistf, memf);
+//	else
+//		procstat = procstat_open_sysctl();
+//	if (procstat == NULL)
+//		errx(1, "procstat_open()");
+//	p = procstat_getprocs(procstat, what, arg, &cnt);
+//	if (p == NULL)
+//		errx(1, "procstat_getprocs()");
+//		LESS CONFIDENCE ON FOLLOWING LINES
+
+  if (memf != NULL)
 		procstat = procstat_open_kvm(nlistf, memf);
 	else
 		procstat = procstat_open_sysctl();
 	if (procstat == NULL)
-		errx(1, "procstat_open()");
+		xo_errx(1, "procstat_open_sysctl() failed: %s", xo_strerror(errno));
 	p = procstat_getprocs(procstat, what, arg, &cnt);
 	if (p == NULL)
-		errx(1, "procstat_getprocs()");
+		xo_errx(1, "procstat_getprocs() failed: %s", xo_strerror(errno));
 
 	/*
 	 * Print header.
