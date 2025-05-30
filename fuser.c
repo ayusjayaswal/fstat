@@ -37,6 +37,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <libprocstat.h>
+#include <libxo/xo.h>
 #include <limits.h>
 #include <paths.h>
 #include <pwd.h>

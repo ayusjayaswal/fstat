@@ -45,7 +45,7 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <err.h> // # remove this later
+#include <errno.h>
 #include <libprocstat.h>
 #include <limits.h>
 #include <pwd.h>
@@ -177,43 +177,32 @@ do_fstat(int argc, char **argv)
 		checkfile = 1;
 	}
 
-//	if (memf != NULL)
-//		procstat = procstat_open_kvm(nlistf, memf);
-//	else
-//		procstat = procstat_open_sysctl();
-//	if (procstat == NULL)
-//		errx(1, "procstat_open()");
-//	p = procstat_getprocs(procstat, what, arg, &cnt);
-//	if (p == NULL)
-//		errx(1, "procstat_getprocs()");
-//		LESS CONFIDENCE ON FOLLOWING LINES
-
-  if (memf != NULL)
+	if (memf != NULL)
 		procstat = procstat_open_kvm(nlistf, memf);
 	else
 		procstat = procstat_open_sysctl();
 	if (procstat == NULL)
-		xo_errx(1, "procstat_open_sysctl() failed: %s", xo_strerror(errno));
+		xo_errx(1, "procstat_open_sysctl() failed: %s", strerror(errno));
 	p = procstat_getprocs(procstat, what, arg, &cnt);
 	if (p == NULL)
-		xo_errx(1, "procstat_getprocs() failed: %s", xo_strerror(errno));
+		xo_errx(1, "procstat_getprocs() failed: %s", strerror(errno));
 
   xo_open_list("fstat-entry");
 	/*
 	 * Print header.
 	 */
-xo_emit_h("{T:USER/%-8s}{T:/%-10s}{T:PID/%5s}{T:FD/%4s}", "USER", "CMD", "PID",
+	xo_emit("{T:USER/%-8s}{T:/%-10s}{T:PID/%5s}{T:FD/%4s}", "USER", "CMD", "PID",
         "FD");
 	if (nflg)
-		xo_emit_h("{T:DEVICE/%-6s}{T:INODE/%10s}{T:MODE/%12s}{T:SIZE_OR_DEV/%-6s}
-            {T:ACCESS/%3s}", "DEV", "INUM", "MODE", "SZ|DV", "R/W");
+		xo_emit("{T:DEVICE/%-6s}{T:INODE/%10s}{T:MODE/%12s}{T:SIZE_OR_DEV/%-6s}"
+            "{T:ACCESS/%3s}", "DEV", "INUM", "MODE", "SZ|DV", "R/W");
 	else
-		xo_emit_h("{T:MOUNT/%-10s}{T:INODE/%10s}{T:MODE/%12s}{T:SIZE_OR_DEV/%-6s}
-            {T:ACCESS/%3s}", "MOUNT", "INUM", "MODE", "SZ|DV", "R/W");
+		xo_emit("{T:MOUNT/%-10s}{T:INODE/%10s}{T:MODE/%12s}{T:SIZE_OR_DEV/%-6s}"
+            "{T:ACCESS/%3s}", "MOUNT", "INUM", "MODE", "SZ|DV", "R/W");
 
 	if (checkfile && fsflg == 0)
-		xo_emit_h("{T:NAME/ %s}", " NAME");
-	xo_emit_h("\n");
+		xo_emit("{T:NAME/ %s}", " NAME");
+	xo_emit("\n");
 
 	/*
 	 * Go through the process list.
@@ -287,22 +276,7 @@ print_file_info(struct procstat *procstat, struct filestat *fst,
 	 * Print entry prefix.
 	 */
   xo_emit("{k:user/%-8.8s} {k:command/%-10s} {k:pid/%5d}", uname, cmd, pid);
-//	if (fst->fs_uflags & PS_FST_UFLAG_TEXT)
-//		printf(" text");
-//	else if (fst->fs_uflags & PS_FST_UFLAG_CDIR)
-//		printf("   wd");
-//	else if (fst->fs_uflags & PS_FST_UFLAG_RDIR)
-//		printf(" root");
-//	else if (fst->fs_uflags & PS_FST_UFLAG_TRACE)
-//		printf("   tr");
-//	else if (fst->fs_uflags & PS_FST_UFLAG_MMAP)
-//		printf(" mmap");
-//	else if (fst->fs_uflags & PS_FST_UFLAG_JAIL)
-//		printf(" jail");
-//	else if (fst->fs_uflags & PS_FST_UFLAG_CTTY)
-//		printf(" ctty");
-//	else
-//		printf(" %4d", fst->fs_fd);
+
   if (fst->fs_uflags & PS_FST_UFLAG_TEXT)
 		xo_emit(" {:fd_description/text%4s}", "");
 	else if (fst->fs_uflags & PS_FST_UFLAG_CDIR)
@@ -723,7 +697,7 @@ getfname(const char *filename)
 static void
 usage(void)
 {
-	xo_error("usage: fstat [-fmnv] [-M core] [-N system] [-p pid] [-u user] 
-          [file ...]\n");
+	xo_error("usage: fstat [-fmnv] [-M core] [-N system] [-p pid] [-u user] "
+          "[file ...]\n");
 	exit(1);
 }
