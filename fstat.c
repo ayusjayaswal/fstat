@@ -187,22 +187,23 @@ do_fstat(int argc, char **argv)
 	if (p == NULL)
 		xo_errx(1, "procstat_getprocs() failed: %s", strerror(errno));
 
-  xo_open_list("fstat-entry");
-	/*
-	 * Print header.
-	 */
-	xo_emit("{T:USER/%-8s}{T:/%-10s}{T:PID/%5s}{T:FD/%4s}", "USER", "CMD", "PID",
-        "FD");
-	if (nflg)
-		xo_emit("{T:DEVICE/%-6s}{T:INODE/%10s}{T:MODE/%12s}{T:SIZE_OR_DEV/%-6s}"
-            "{T:ACCESS/%3s}", "DEV", "INUM", "MODE", "SZ|DV", "R/W");
-	else
-		xo_emit("{T:MOUNT/%-10s}{T:INODE/%10s}{T:MODE/%12s}{T:SIZE_OR_DEV/%-6s}"
-            "{T:ACCESS/%3s}", "MOUNT", "INUM", "MODE", "SZ|DV", "R/W");
-
-	if (checkfile && fsflg == 0)
-		xo_emit("{T:NAME/ %s}", " NAME");
-	xo_emit("\n");
+/*
+ * Print header.
+ */
+xo_open_container("file-information");
+if (nflg) {
+    xo_emit("{T:/%s}{T:/%s}{T:/%s}{T:/%s}{T:/%s}{T:/%s}{T:/%s}{T:/%s}{T:/%s}",
+        "USER    ", "CMD         ", "PID  ", "FD ", "DEV   ", 
+        "INUM      ", "MODE ", "SZ|DV ", "R/W");
+} else {
+    xo_emit("{T:/%s}{T:/%s}{T:/%s}{T:/%s}{T:/%s}{T:/%s}{T:/%s}{T:/%s}{T:/%s}",
+        "USER    ", "CMD         ", "PID  ", "FD ", "MOUNT     ", 
+        "INUM ", "MODE        ", "SZ|DV ", "R/W");
+}
+if (checkfile && fsflg == 0)
+    xo_emit("{T:/ NAME}\n");
+else
+    xo_emit("\n");
 
 	/*
 	 * Go through the process list.
@@ -212,7 +213,7 @@ do_fstat(int argc, char **argv)
 			continue;
 		dofiles(procstat, &p[i]);
 	}
-  xo_close_list("fstat-entry");
+  xo_close_list("file-information");
 	procstat_freeprocs(procstat, p);
 	procstat_close(procstat);
   xo_finish();
@@ -271,28 +272,31 @@ print_file_info(struct procstat *procstat, struct filestat *fst,
 		if (fsmatch == 0 || (filename == NULL && fsflg == 0))
 			return;
 	}
-  xo_open_instance("file-details");
-	/*
-	 * Print entry prefix.
-	 */
-  xo_emit("{k:user/%-8.8s} {k:command/%-10s} {k:pid/%5d}", uname, cmd, pid);
 
-  if (fst->fs_uflags & PS_FST_UFLAG_TEXT)
-		xo_emit(" {:fd_description/text%4s}", "");
-	else if (fst->fs_uflags & PS_FST_UFLAG_CDIR)
-		xo_emit(" {:fd_description/%6s}", "wd");
-	else if (fst->fs_uflags & PS_FST_UFLAG_RDIR)
-		xo_emit(" {:fd_description/%6s}", "root");
-	else if (fst->fs_uflags & PS_FST_UFLAG_TRACE)
-		xo_emit(" {:fd_description/%6s}", "tr");
-	else if (fst->fs_uflags & PS_FST_UFLAG_MMAP)
-		xo_emit(" {:fd_description/%6s}", "mmap");
-	else if (fst->fs_uflags & PS_FST_UFLAG_JAIL)
-		xo_emit(" {:fd_description/%6s}", "jail");
-	else if (fst->fs_uflags & PS_FST_UFLAG_CTTY)
-		xo_emit(" {:fd_description/%6s}", "ctty");
-	else
-		xo_emit(" {:fd_number/%4d}", fst->fs_fd);
+  /*
+   * Print entry prefix.
+   */
+  xo_open_instance("file");
+  
+  xo_emit("{:user/%-8.8s/%s} {:command/%-10s/%s} {:pid/%5d/%d}", uname, cmd, pid);
+  
+  if (fst->fs_uflags & PS_FST_UFLAG_TEXT) {
+      xo_emit(" {:fd/text}");
+  } else if (fst->fs_uflags & PS_FST_UFLAG_CDIR) {
+      xo_emit("   {:fd/wd}");
+  } else if (fst->fs_uflags & PS_FST_UFLAG_RDIR) {
+      xo_emit(" {:fd/root}");
+  } else if (fst->fs_uflags & PS_FST_UFLAG_TRACE) {
+      xo_emit("   {:fd/tr}");
+  } else if (fst->fs_uflags & PS_FST_UFLAG_MMAP) {
+      xo_emit(" {:fd/mmap}");
+  } else if (fst->fs_uflags & PS_FST_UFLAG_JAIL) {
+      xo_emit(" {:fd/jail}");
+  } else if (fst->fs_uflags & PS_FST_UFLAG_CTTY) {
+      xo_emit(" {:fd/ctty}");
+  } else {
+      xo_emit(" {:fd/%4d}", fst->fs_fd);
+  }
 
 	/*
 	 * Print type-specific data.
@@ -327,24 +331,17 @@ switch (fst->fs_type) {
 		print_sem_info(procstat, fst);
 		break;
 	case PS_FST_TYPE_DEV:
-        xo_emit("{e:file_type/dev}");
-		xo_emit(" {:device_details/n\\/a%*s}", 28, "");
-		print_access_flags(fst->fs_fflags);
 		break;
 	default:	
 		xo_emit("{e:file_type/unknown}");
 		if (vflg)
 			xo_warnx("unknown file type %d for file %d of pid %d",
 			    fst->fs_type, fst->fs_fd, pid);
-		xo_emit(" {:unknown_type_details/n\\/a%*s}", 28, "");
-		print_access_flags(fst->fs_fflags);
 	}
-
 	if (filename && !fsflg)
-    xo_emit(" {:name_from_argument/ %s}", filename);
-
-	xo_close_instance("file-details");
+    xo_emit("  {:filename/ %s}", filename);
 	xo_emit("\n");
+	xo_close_instance("file");
 }
 
 static char *
@@ -424,10 +421,10 @@ print_socket_info(struct procstat *procstat, struct filestat *fst)
       return;
   }
   if (sock.type > STYPEMAX)
-		xo_emit("*{:socket_domain/%s} {:socket_type_unknown/?%d}", sock.dname, 
+		xo_emit("* {:socket_domain/%s} {:socket_type_unknown/?%d}", sock.dname,
             sock.type);
 	else
-		xo_emit("*{:socket_domain/%s} {:socket_type/%s}", sock.dname, 
+		xo_emit("* {:socket_domain/%s} {:socket_type/%s}", sock.dname, 
             stypename[sock.type]);
 
 	/*
@@ -508,21 +505,18 @@ print_pipe_info(struct procstat *procstat, struct filestat *fst)
 	char errbuf[_POSIX2_LINE_MAX];
 	int error;
 
-  xo_open_container("pipe");
-
 	error = procstat_get_pipe_info(procstat, fst, &ps, errbuf);
-  if (error != 0) {
-    xo_emit(" {:pipe-error/error}");
-    xo_close_container("pipe");
-    return;
-  }
-	xo_emit(" {:pipe-addr/%#lx} <-> {:peer-addr/%#lx}",
+	if (error != 0) {
+		xo_emit("* {:type/error}");
+		return;
+	}
+	xo_open_container("pipe");
+	xo_emit("* {:type/pipe} {:pipe-addr/%8lx/%lx} <-> {:peer-addr/%8lx/%lx}",
 	    (u_long)ps.addr, (u_long)ps.peer);
-	xo_emit(" {:buffer-count/%6zd}", ps.buffer_cnt);
+	xo_emit(" {:buffer-count/%6zd/%zd}", ps.buffer_cnt);
 	print_access_flags(fst->fs_fflags);
-  xo_close_container("pipe");
+	xo_close_container("pipe");
 }
-
 
 static void
 print_pts_info(struct procstat *procstat, struct filestat *fst)
@@ -531,21 +525,20 @@ print_pts_info(struct procstat *procstat, struct filestat *fst)
 	char errbuf[_POSIX2_LINE_MAX];
 	int error;
 
-  xo_open_container("pts");
 	error = procstat_get_pts_info(procstat, fst, &pts, errbuf);
 	if (error != 0) {
-    xo_emit(" {:pts_error/error}");
-    xo_close_container("pts");
+		xo_emit("* {:type/error}");
 		return;
 	}
-	xo_emit("*{:pts_indicator/pseudo-terminal master} ");
+	xo_open_container("pts");
+	xo_emit("* {:type/pseudo-terminal master} ");
 	if (nflg || !*pts.devname) {
-		xo_emit("{:device_number/%#10jx}", (uintmax_t)pts.dev);
+		xo_emit("{:device/%#10jx/%#jx}", (uintmax_t)pts.dev);
 	} else {
-		xo_emit("{:device_name/%10s}", pts.devname);
+		xo_emit("{:device/%10s/%s}", pts.devname);
 	}
 	print_access_flags(fst->fs_fflags);
-  xo_close_container("pts");
+	xo_close_container("pts");
 }
 
 static void
@@ -558,20 +551,20 @@ print_sem_info(struct procstat *procstat, struct filestat *fst)
 
 	error = procstat_get_sem_info(procstat, fst, &sem, errbuf);
 	if (error != 0) {
-		xo_emit(" {:sem_error/error}");
+		xo_emit("* {:type/error}");
 		return;
 	}
-	xo_open_container("semaphore");
+	xo_open_container("sem");
 	if (nflg) {
-		xo_emit(" {:path/%15s}", "");
+		xo_emit("{:mount/%13s/%s}", "");
 		(void)snprintf(mode, sizeof(mode), "%o", sem.mode);
 	} else {
-		xo_emit(" {:path/%-15s}", fst->fs_path != NULL ? fst->fs_path : "-");
+		xo_emit(" {:mount/%-15s/%s}", fst->fs_path != NULL ? fst->fs_path : "-");
 		strmode(sem.mode, mode);
 	}
-	xo_emit(" {:mode/%10s} {:value/%6u}", mode, sem.value);
+	xo_emit(" {:mode/%10s/%s} {:value/%6u/%u}", mode, sem.value);
 	print_access_flags(fst->fs_fflags);
-	xo_close_container("semaphore");
+	xo_close_container("sem");
 }
 
 static void
@@ -584,21 +577,20 @@ print_shm_info(struct procstat *procstat, struct filestat *fst)
 
 	error = procstat_get_shm_info(procstat, fst, &shm, errbuf);
 	if (error != 0) {
-		xo_emit(" {:shm_error/error}");
+		xo_emit("* {:type/error}");
 		return;
 	}
-
-	xo_open_container("shared_memory");
+	xo_open_container("shm");
 	if (nflg) {
-		xo_emit(" {:path/%15s}", "");
+		xo_emit("{:mount/%13s/%s}", "");
 		(void)snprintf(mode, sizeof(mode), "%o", shm.mode);
 	} else {
-		xo_emit(" {:path/%-15s}", fst->fs_path != NULL ? fst->fs_path : "-");
+		xo_emit(" {:mount/%-15s/%s}", fst->fs_path != NULL ? fst->fs_path : "-");
 		strmode(shm.mode, mode);
 	}
-	xo_emit(" {:mode/%10s} {:size/%6ju}", mode, shm.size);
+	xo_emit(" {:mode/%10s/%s} {:size/%6ju/%ju}", mode, shm.size);
 	print_access_flags(fst->fs_fflags);
-	xo_close_container("shared_memory");
+	xo_close_container("shm");
 }
 
 static void
@@ -618,42 +610,38 @@ print_vnode_info(struct procstat *procstat, struct filestat *fst)
 		badtype = "bad";
 	else if (vn.vn_type == PS_FST_VTYPE_VNON)
 		badtype = "none";
-
 	xo_open_container("vnode");
-
 	if (badtype != NULL) {
-		xo_emit(" {:fsid/-} {:mount_dir/-} {:fileid/-} {:mode/%10s} {:size_or_dev/-}",
-            badtype);
+		xo_emit(" {:mount/%-9s/%s}  {:inode/%10s/%s}    {:size/%-6s/%s}", 
+		    "-", badtype, "-");
 		xo_close_container("vnode");
 		return;
 	}
-
+	
 	if (nflg)
-		xo_emit(" {:fsid/%#5jx}", (uintmax_t)vn.vn_fsid);
+		xo_emit(" {:mount/%#5jx/%#jx}", (uintmax_t)vn.vn_fsid);
 	else if (vn.vn_mntdir != NULL)
-		xo_emit(" {:mount_dir/%-8s}", vn.vn_mntdir);
-	else
-		xo_emit(" {:mount_dir/-}");
+		xo_emit(" {:mount/%-8s/%s}", vn.vn_mntdir);
 
 	/*
 	 * Print access mode.
 	 */
 	if (nflg)
 		(void)snprintf(mode, sizeof(mode), "%o", vn.vn_mode);
-	else
+	else {
 		strmode(vn.vn_mode, mode);
-
-	xo_emit(" {:fileid/%6jd} {:mode/%10s}", (intmax_t)vn.vn_fileid, mode);
-
+	}
+	xo_emit(" {:inode/%6jd/%jd} {:mode/%10s/%s}", (intmax_t)vn.vn_fileid, mode);
+	
 	if (vn.vn_type == PS_FST_VTYPE_VBLK || vn.vn_type == PS_FST_VTYPE_VCHR) {
 		if (nflg || !*vn.vn_devname)
-			xo_emit(" {:device/%#6jx}", (uintmax_t)vn.vn_dev);
-		else
-			xo_emit(" {:device/%6s}", vn.vn_devname);
-	} else {
-		xo_emit(" {:size/%6ju}", (uintmax_t)vn.vn_size);
-	}
-
+			xo_emit(" {:size/%#6jx/%#jx}", (uintmax_t)vn.vn_dev);
+		else {
+			xo_emit(" {:size/%6s/%s}", vn.vn_devname);
+		}
+	} else
+		xo_emit(" {:size/%6ju/%ju}", (uintmax_t)vn.vn_size);
+	
 	print_access_flags(fst->fs_fflags);
 	xo_close_container("vnode");
 }
@@ -697,7 +685,8 @@ getfname(const char *filename)
 static void
 usage(void)
 {
-	xo_error("usage: fstat [-fmnv] [-M core] [-N system] [-p pid] [-u user] "
+	xo_error(
+          "usage: fstat [-fmnv] [-M core] [-N system] [-p pid] [-u user] "
           "[file ...]\n");
 	exit(1);
 }
