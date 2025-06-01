@@ -106,7 +106,7 @@ do_fstat(int argc, char **argv)
 	struct passwd *passwd;
 	struct procstat *procstat;
 	int arg, ch, what;
-	int cnt, i;
+	unsigned int cnt, i;
 	arg = 0;
 	what = KERN_PROC_PROC;
 	nlistf = memf = NULL;
