@@ -276,7 +276,7 @@ print_file_info(struct procstat *procstat, struct filestat *fst,
   /*
    * Print entry prefix.
    */
-  xo_open_instance("file");
+  xo_open_instance("files");
   
   xo_emit("{:user/%-8.8s/%s} {:command/%-10s/%s} {:pid/%5d/%d}", uname, cmd, pid);
   
