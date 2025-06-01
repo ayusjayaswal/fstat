@@ -631,7 +631,7 @@ print_vnode_info(struct procstat *procstat, struct filestat *fst)
 	else {
 		strmode(vn.vn_mode, mode);
 	}
-	xo_emit(" {:inode/%6jd/%jd} {:mode/%9s/%s}", (intmax_t)vn.vn_fileid, mode);
+	xo_emit(" {:inode/%6jd/%jd} {:mode/%10s/%s}", (intmax_t)vn.vn_fileid, mode);
 	
 	if (vn.vn_type == PS_FST_VTYPE_VBLK || vn.vn_type == PS_FST_VTYPE_VCHR) {
 		if (nflg || !*vn.vn_devname)
