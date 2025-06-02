@@ -47,6 +47,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <libprocstat.h>
+#include <libxo/xo.h>
 #include <limits.h>
 #include <pwd.h>
 #include <stdint.h>
@@ -56,8 +57,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <netdb.h>
-
-#include <libxo/xo.h>
 
 #include "functions.h"
 
@@ -190,13 +189,15 @@ do_fstat(int argc, char **argv)
 /*
  * Print header.
  */
-xo_open_container("file-information");
+xo_open_container("fstat-information");
 if (nflg) {
-    xo_emit("{T:/%-9s}{T:/%-13s}{T:/%-6s}{T:/%-4s}{T:/%-7s}{T:/%-11s}{T:/%-5s}{T:/%-6s}{T:/%-s}",
+    xo_emit("{T:/%-9s}{T:/%-13s}{T:/%-6s}{T:/%-4s}{T:/%-7s}{T:/%-11s}{T:/%-5s}
+            {T:/%-6s}{T:/%-s}",
         "USER", "CMD", "PID", "FD", "DEV", 
         "INUM", "MODE", "SZ|DV ", "R/W");
 } else {
-    xo_emit("{T:/%-9s}{T:/%-13s}{T:/%-6s}{T:/%-3s}{T:/%-11s}{T:/%-5s}{T:/%-13s}{T:/%-6s}{T:/%-3s}",
+    xo_emit("{T:/%-9s}{T:/%-13s}{T:/%-6s}{T:/%-3s}{T:/%-11s}{T:/%-5s}{T:/%-13s}
+            {T:/%-6s}{T:/%-3s}",
         "USER", "CMD", "PID", "FD", "MOUNT", 
         "INUM", "MODE", "SZ|DV", "R/W");
 }
@@ -213,7 +214,7 @@ else
 			continue;
 		dofiles(procstat, &p[i]);
 	}
-  xo_close_list("file-information");
+  xo_close_container("fstat-information");
 	procstat_freeprocs(procstat, p);
 	procstat_close(procstat);
   xo_finish();
@@ -278,7 +279,8 @@ print_file_info(struct procstat *procstat, struct filestat *fst,
    */
   xo_open_instance("files");
   
-  xo_emit("{:user/%-8.8s/%s} {:command/%-10s/%s} {:pid/%5d/%d}", uname, cmd, pid);
+  xo_emit("{:user/%-8.8s/%s} {:command/%-10s/%s} {:pid/%5d/%d}", uname, cmd, 
+          pid);
   
   if (fst->fs_uflags & PS_FST_UFLAG_TEXT) {
       xo_emit(" {:fd/text}");
@@ -341,7 +343,7 @@ switch (fst->fs_type) {
 	if (filename && !fsflg)
     xo_emit("  {:filename/ %s}", filename);
 	xo_emit("\n");
-	xo_close_instance("file");
+	xo_close_instance("files");
 }
 
 static char *

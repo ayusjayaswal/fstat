@@ -118,9 +118,8 @@ static void	dofiles(struct procstat *procstat, struct kinfo_proc *kp,
 static void
 usage(void)
 {
-
-	fprintf(stderr,
-"usage: fuser [-cfhkmu] [-M core] [-N system] [-s signal] file ...\n");
+  xo_error(
+  "usage: fuser [-cfhkmu] [-M core] [-N system] [-s signal] file ...\n");
 	exit(EX_USAGE);
 }
 
@@ -132,10 +131,10 @@ printflags(struct consumer *cons)
 	assert(cons);
 	for (i = 0; i < NUFLAGS; i++)
 		if ((cons->uflags & uflags[i].flag) != 0)
-			fputc(uflags[i].ch, stderr);
+      xo_error("{D:/%c}", uflags[i].ch);
 	for (i = 0; i < NFFLAGS; i++)
 		if ((cons->flags & fflags[i].flag) != 0)
-			fputc(fflags[i].ch, stderr);
+      xo_error("{D:/%c}", fflags[i].ch);
 }
 
 /*
@@ -148,7 +147,7 @@ addfile(const char *path, struct reqfile *reqfile)
 
 	assert(path);
 	if (stat(path, &sb) != 0) {
-		warn("%s", path);
+		xo_warn("%s", path);
 		return (1);
 	}
 	reqfile->fileid = sb.st_ino;
@@ -168,6 +167,10 @@ do_fuser(int argc, char *argv[])
 	char *ep, *nlistf, *memf;
 	int ch, sig;
 	unsigned int i, cnt, nfiles;
+
+  argc = xo_parse_args(argc, argv);
+	if (argc < 0)
+		exit(EX_USAGE);
 
 	sig = SIGKILL;	/* Default to kill. */
 	nlistf = NULL;
@@ -203,12 +206,12 @@ do_fuser(int argc, char *argv[])
 			if (isdigit(*optarg)) {
 				sig = strtol(optarg, &ep, 10);
 				if (*ep != '\0' || sig < 0 || sig >= sys_nsig)
-					errx(EX_USAGE, "illegal signal number" ": %s",
+					xo_errx(EX_USAGE, "illegal signal number" ": %s",
 					    optarg);
 			} else {
 				sig = str2sig(optarg);
 				if (sig < 0)
-					errx(EX_USAGE, "illegal signal name: "
+					xo_errx(EX_USAGE, "illegal signal name: "
 					    "%s", optarg);
 			}
 			break;
@@ -231,23 +234,23 @@ do_fuser(int argc, char *argv[])
 	 */
 	reqfiles = malloc(argc * sizeof(struct reqfile));
 	if (reqfiles == NULL)
-		err(EX_OSERR, "malloc()");
+		xo_err(EX_OSERR, "malloc()");
 	nfiles = 0;
 	while (argc--)
 		if (!addfile(*(argv++), &reqfiles[nfiles]))
 			nfiles++;
 	if (nfiles == 0)
-		errx(EX_IOERR, "files not accessible");
+		xo_errx(EX_IOERR, "files not accessible");
 
 	if (memf != NULL)
 		procstat = procstat_open_kvm(nlistf, memf);
 	else
 		procstat = procstat_open_sysctl();
 	if (procstat == NULL)
-		errx(1, "procstat_open()");
+		xo_errx(1, "procstat_open()");
 	procs = procstat_getprocs(procstat, KERN_PROC_PROC, 0, &cnt);
 	if (procs == NULL)
-		 errx(1, "procstat_getprocs()");
+		xo_errx(1, "procstat_getprocs()");
 
 	/*
 	 * Walk through process table and look for matching files.
@@ -256,27 +259,36 @@ do_fuser(int argc, char *argv[])
 		if (procs[i].ki_stat != SZOMB)
 			dofiles(procstat, &procs[i], reqfiles, nfiles);
 
+  xo_open_container("files");
+
 	for (i = 0; i < nfiles; i++) {
-		fprintf(stderr, "%s:", reqfiles[i].name);
-		fflush(stderr);
+	  xo_error("%s:", reqfiles[i].name);
+    xo_error_flush();
+    xo_open_list("consumers");
 		STAILQ_FOREACH(consumer, &reqfiles[i].consumers, next) {
 			if (consumer->flags != 0) {
-				fprintf(stdout, "%6d", consumer->pid);
-				fflush(stdout);
+        xo_open_instance("consumer");
+        xo_emit("{:pid/%6d/%d}", consumer->pid);
+        xo_flush();
 				printflags(consumer);
 				if ((flags & UFLAG) != 0)
-					fprintf(stderr, "(%s)",
-					    user_from_uid(consumer->uid, 0));
+          xo_error("(%s)",
+              user_from_uid(consumer->uid, 0));
 				if ((flags & KFLAG) != 0)
 					kill(consumer->pid, sig);
-				fflush(stderr);
+        xo_error_flush();
+        xo_close_instance("consumer");
 			}
 		}
-		(void)fprintf(stderr, "\n");
+    xo_close_list("consumers");
+    xo_error("\n");
+
 	}
+  xo_close_container("files");
 	procstat_freeprocs(procstat, procs);
 	procstat_close(procstat);
 	free(reqfiles);
+  xo_finish();
 	return (0);
 }
 
@@ -337,7 +349,7 @@ dofiles(struct procstat *procstat, struct kinfo_proc *kp,
 			 */
 			cons = calloc(1, sizeof(struct consumer));
 			if (cons == NULL) {
-				warn("malloc()");
+				xo_warn("malloc()");
 				continue;
 			}
 			cons->uid = kp->ki_uid;
