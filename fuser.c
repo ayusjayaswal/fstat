@@ -263,7 +263,7 @@ do_fuser(int argc, char *argv[])
 
 	for (i = 0; i < nfiles; i++) {
 	  xo_error("%s:", reqfiles[i].name);
-    xo_error_flush();
+    fflush(stdout);
     xo_open_list("consumers");
 		STAILQ_FOREACH(consumer, &reqfiles[i].consumers, next) {
 			if (consumer->flags != 0) {
@@ -276,7 +276,7 @@ do_fuser(int argc, char *argv[])
               user_from_uid(consumer->uid, 0));
 				if ((flags & KFLAG) != 0)
 					kill(consumer->pid, sig);
-        xo_error_flush();
+        fflush(stdout);
         xo_close_instance("consumer");
 			}
 		}
