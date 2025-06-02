@@ -235,8 +235,10 @@ dofiles(struct procstat *procstat, struct kinfo_proc *kp)
 	head = procstat_getfiles(procstat, kp, mflg);
 	if (head == NULL)
 		return;
+  xo_open_list("files");
 	STAILQ_FOREACH(fst, head, next)
 		print_file_info(procstat, fst, uname, cmd, pid);
+  xo_close_list("files");
 	procstat_freefiles(procstat, head);
 }
 
@@ -275,7 +277,7 @@ print_file_info(struct procstat *procstat, struct filestat *fst,
   /*
    * Print entry prefix.
    */
-  xo_open_instance("files");
+  xo_open_instance("file");
   
   xo_emit("{:user/%-8.8s/%s} {:command/%-10s/%s} {:pid/%5d/%d}", uname, cmd, 
           pid);
@@ -341,7 +343,7 @@ switch (fst->fs_type) {
 	if (filename && !fsflg)
     xo_emit("  {:filename/ %s}", filename);
 	xo_emit("\n");
-	xo_close_instance("files");
+	xo_close_instance("file");
 }
 
 static char *
