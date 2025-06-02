@@ -30,6 +30,7 @@
 .Nd list IDs of all processes that have one or more files open
 .Sh SYNOPSIS
 .Nm
+.Op Fl -libxo
 .Op Fl cfkmu
 .Op Fl M Ar core
 .Op Fl N Ar system
@@ -54,6 +55,13 @@ utility will also look through mmapped files.
 .Pp
 The following options are available:
 .Bl -tag -width indent
+.It Fl -libxo
+Generate output via
+.Xr libxo 3
+in a selection of different human and machine readable formats.
+See
+.Xr xo_parse_args 3
+for details on command line arguments.
 .It Fl c
 Treat files as mount points and report on any files open in the file system.
 .It Fl f
@@ -120,6 +128,8 @@ this directory.
 .Xr fstat 1 ,
 .Xr ps 1 ,
 .Xr systat 1 ,
+.Xr libxo 3 ,
+.Xr xo_parse_args 3 ,
 .Xr iostat 8 ,
 .Xr pstat 8 ,
 .Xr vmstat 8
