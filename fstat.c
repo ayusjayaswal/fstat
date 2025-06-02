@@ -191,11 +191,13 @@ do_fstat(int argc, char **argv)
  */
 xo_open_container("fstat-information");
 if (nflg) {
-    xo_emit("{T:/%-9s}{T:/%-13s}{T:/%-6s}{T:/%-4s}{T:/%-7s}{T:/%-11s}{T:/%-5s} {T:/%-6s}{T:/%-s}",
+    xo_emit("{T:/%-9s}{T:/%-13s}{T:/%-6s}{T:/%-4s}{T:/%-7s}{T:/%-11s}",
+            "{T:/%-5s}{T:/%-6s}{T:/%-s}",
         "USER", "CMD", "PID", "FD", "DEV", 
         "INUM", "MODE", "SZ|DV ", "R/W");
 } else {
-    xo_emit("{T:/%-9s}{T:/%-13s}{T:/%-6s}{T:/%-3s}{T:/%-11s}{T:/%-5s}{T:/%-13s} {T:/%-6s}{T:/%-3s}",
+    xo_emit("{T:/%-9s}{T:/%-13s}{T:/%-6s}{T:/%-3s}{T:/%-11s}{T:/%-5s}",
+            "{T:/%-13s}{T:/%-6s}{T:/%-3s}",
         "USER", "CMD", "PID", "FD", "MOUNT", 
         "INUM", "MODE", "SZ|DV", "R/W");
 }
