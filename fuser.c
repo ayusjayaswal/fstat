@@ -281,8 +281,7 @@ do_fuser(int argc, char *argv[])
 			}
 		}
     xo_close_list("consumers");
-    xo_error("\n");
-
+    xo_emit("{D:/\n}");
 	}
   xo_close_container("files");
 	procstat_freeprocs(procstat, procs);
